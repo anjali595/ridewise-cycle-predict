@@ -7,10 +7,11 @@ import DashboardOverview from "@/components/DashboardOverview";
 import PredictionForm from "@/components/PredictionForm";
 import ChatbotSection from "@/components/ChatbotSection";
 import ContactSection from "@/components/ContactSection";
+import ProfileSection from "@/components/ProfileSection";
 
 const Dashboard = () => {
   const [user, setUser] = useState<User | null>(null);
-  const [activeSection, setActiveSection] = useState<"dashboard" | "prediction" | "chatbot" | "contact">("dashboard");
+  const [activeSection, setActiveSection] = useState<"dashboard" | "prediction" | "chatbot" | "contact" | "profile">("dashboard");
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -60,6 +61,7 @@ const Dashboard = () => {
         {activeSection === "prediction" && <PredictionForm userId={user.id} />}
         {activeSection === "chatbot" && <ChatbotSection />}
         {activeSection === "contact" && <ContactSection userId={user.id} />}
+        {activeSection === "profile" && <ProfileSection userId={user.id} userEmail={user.email || ""} onLogout={handleLogout} />}
       </main>
     </div>
   );

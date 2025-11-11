@@ -1,9 +1,11 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Bike, Send } from "lucide-react";
+import { Bike, Send, Sparkles } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 interface Message {
   id: string;
@@ -17,15 +19,23 @@ const ChatbotSection = () => {
     {
       id: "1",
       role: "assistant",
-      content: "Hi! I'm RideBot 🚲 Ask me about bike rides, predictions, or just chat!",
+      content: "Hi! I'm RideBot 🚲 powered by Gemini AI. Ask me about bike rides, predictions, cycling tips, or anything else!",
       timestamp: new Date(),
     },
   ]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [messages]);
 
   const handleSend = async () => {
-    if (!input.trim()) return;
+    if (!input.trim() || loading) return;
 
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -38,57 +48,121 @@ const ChatbotSection = () => {
     setInput("");
     setLoading(true);
 
-    // Simulate bot response
-    setTimeout(() => {
+    try {
+      const chatHistory = [...messages, userMessage].map(msg => ({
+        role: msg.role,
+        content: msg.content
+      }));
+
+      const { data, error } = await supabase.functions.invoke("chat", {
+        body: { messages: chatHistory },
+      });
+
+      if (error) throw error;
+
+      if (!data) {
+        throw new Error("No response from AI");
+      }
+
+      // Parse SSE stream
+      const reader = data.getReader();
+      const decoder = new TextDecoder();
+      let assistantContent = "";
+      let assistantMessageId = (Date.now() + 1).toString();
+
+      // Add empty assistant message
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: assistantMessageId,
+          role: "assistant",
+          content: "",
+          timestamp: new Date(),
+        },
+      ]);
+
+      let buffer = "";
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() || "";
+
+        for (const line of lines) {
+          if (!line.trim() || line.startsWith(":")) continue;
+          if (!line.startsWith("data: ")) continue;
+
+          const jsonStr = line.slice(6).trim();
+          if (jsonStr === "[DONE]") continue;
+
+          try {
+            const parsed = JSON.parse(jsonStr);
+            const content = parsed.choices?.[0]?.delta?.content;
+            if (content) {
+              assistantContent += content;
+              setMessages((prev) =>
+                prev.map((m) =>
+                  m.id === assistantMessageId
+                    ? { ...m, content: assistantContent }
+                    : m
+                )
+              );
+            }
+          } catch (e) {
+            // Ignore parse errors
+          }
+        }
+      }
+    } catch (error: any) {
+      console.error("Chat error:", error);
+      
+      let errorMessage = "Sorry, I'm having trouble responding. Please try again.";
+      if (error.message?.includes("429") || error.status === 429) {
+        errorMessage = "I'm a bit overwhelmed right now 😅 Please wait a moment and try again.";
+      } else if (error.message?.includes("402") || error.status === 402) {
+        errorMessage = "AI credits have been depleted. Please contact support to continue using the chatbot.";
+      }
+
       const botMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: "assistant",
-        content: getBotResponse(input),
+        content: errorMessage,
         timestamp: new Date(),
       };
       setMessages((prev) => [...prev, botMessage]);
-      setLoading(false);
-    }, 1000);
-  };
 
-  const getBotResponse = (userInput: string): string => {
-    const input = userInput.toLowerCase();
-    
-    if (input.includes("best time") || input.includes("when")) {
-      return "Based on our data, the best time to ride is typically around 5-6 PM on weekdays, when weather is clear. Morning rides (8-9 AM) are also popular!";
+      toast({
+        title: "Chat Error",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
     }
-    if (input.includes("hourly") || input.includes("model")) {
-      return "The hourly model predicts bike demand for specific hours using factors like time, weather, and day type. It's great for short-term planning!";
-    }
-    if (input.includes("weather")) {
-      return "Weather significantly impacts bike rentals! Clear weather increases demand by 15-20%, while rain can reduce it by 30-40%. Temperature and humidity also play important roles.";
-    }
-    if (input.includes("season")) {
-      return "Summer sees the highest bike rental demand (35%), followed by Spring (25%), Fall (20%), and Winter (20%). Plan accordingly!";
-    }
-    
-    return "That's an interesting question! I can help with bike rental predictions, explain our models, discuss weather impacts, or provide riding tips. What would you like to know more about?";
   };
 
   const quickButtons = [
     "What's the best time to ride?",
-    "Explain hourly model",
+    "Explain the hourly model",
     "How does weather affect demand?",
-    "Tell me about seasons",
+    "Tell me about peak seasons",
   ];
 
   return (
     <div className="max-w-4xl mx-auto">
-      <Card className="border-primary/20 bg-card/50 backdrop-blur urban-shadow h-[600px] flex flex-col">
+      <Card className="border-primary/20 bg-card/50 backdrop-blur urban-shadow glow-hover h-[600px] flex flex-col">
         <CardHeader>
           <CardTitle className="text-2xl flex items-center">
             <Bike className="w-6 h-6 mr-2 text-primary" />
             RideBot Assistant
+            <Sparkles className="w-4 h-4 ml-2 text-accent" />
           </CardTitle>
-          <CardDescription>Ask me anything about bike rentals and predictions!</CardDescription>
+          <CardDescription>Powered by Gemini AI - Ask me anything about bike rentals!</CardDescription>
         </CardHeader>
         <CardContent className="flex-1 flex flex-col p-0">
-          <ScrollArea className="flex-1 px-6">
+          <ScrollArea className="flex-1 px-6" ref={scrollRef}>
             <div className="space-y-4 py-4">
               {messages.map((message) => (
                 <div
@@ -98,11 +172,11 @@ const ChatbotSection = () => {
                   <div
                     className={`max-w-[80%] rounded-lg p-4 ${
                       message.role === "user"
-                        ? "bike-gradient text-white"
-                        : "bg-secondary/50 text-foreground border border-primary/20"
+                        ? "bike-gradient text-white glow-hover"
+                        : "bg-secondary/50 text-foreground border border-primary/20 glow-hover"
                     }`}
                   >
-                    <p className="text-sm">{message.content}</p>
+                    <p className="text-sm whitespace-pre-wrap">{message.content}</p>
                     <p className="text-xs mt-2 opacity-70">
                       {message.timestamp.toLocaleTimeString()}
                     </p>
@@ -132,9 +206,10 @@ const ChatbotSection = () => {
                   size="sm"
                   onClick={() => {
                     setInput(text);
-                    handleSend();
+                    setTimeout(() => handleSend(), 100);
                   }}
-                  className="border-primary/30 hover:bg-primary/10 text-xs"
+                  className="border-primary/30 hover:bg-primary/10 text-xs glow-hover"
+                  disabled={loading}
                 >
                   {text}
                 </Button>
