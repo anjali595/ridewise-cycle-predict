@@ -54,18 +54,32 @@ const ChatbotSection = () => {
         content: msg.content
       }));
 
-      const { data, error } = await supabase.functions.invoke("chat", {
-        body: { messages: chatHistory },
+      const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat`;
+      const response = await fetch(CHAT_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+        },
+        body: JSON.stringify({ messages: chatHistory }),
       });
 
-      if (error) throw error;
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        if (response.status === 429) {
+          throw new Error("Rate limit exceeded");
+        } else if (response.status === 402) {
+          throw new Error("AI credits depleted");
+        }
+        throw new Error(errorData.error || "AI service error");
+      }
 
-      if (!data) {
+      if (!response.body) {
         throw new Error("No response from AI");
       }
 
       // Parse SSE stream
-      const reader = data.getReader();
+      const reader = response.body.getReader();
       const decoder = new TextDecoder();
       let assistantContent = "";
       let assistantMessageId = (Date.now() + 1).toString();

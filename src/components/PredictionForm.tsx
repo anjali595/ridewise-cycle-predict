@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,8 +7,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
-import { Bike, Calendar, Clock, CloudRain, Thermometer, Wind } from "lucide-react";
+import { Bike, Calendar, Clock, CloudRain, Thermometer, Wind, Save, BookmarkPlus } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 
 interface PredictionFormProps {
   userId: string;
@@ -32,6 +33,92 @@ const PredictionForm = ({ userId }: PredictionFormProps) => {
   const [temperature, setTemperature] = useState("0.5");
   const [humidity, setHumidity] = useState("0.5");
   const [windspeed, setWindspeed] = useState("0.2");
+
+  // Preset state
+  const [presets, setPresets] = useState<any[]>([]);
+  const [presetName, setPresetName] = useState("");
+  const [showSaveDialog, setShowSaveDialog] = useState(false);
+
+  useEffect(() => {
+    loadPresets();
+  }, [userId]);
+
+  const loadPresets = async () => {
+    const { data } = await supabase
+      .from("prediction_presets")
+      .select("*")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false });
+    
+    if (data) setPresets(data);
+  };
+
+  const applyPreset = (preset: any) => {
+    const config = preset.preset_data;
+    setHour(config.hour?.toString() || "12");
+    setYear(config.year?.toString() || "2024");
+    setMonth(config.month?.toString() || "1");
+    setDayOfWeek(config.dayOfWeek?.toString() || "1");
+    setIsHoliday(config.isHoliday || false);
+    setIsWorkingDay(config.isWorkingDay !== undefined ? config.isWorkingDay : true);
+    setSeason(config.season?.toString() || "1");
+    setWeather(config.weather?.toString() || "1");
+    setTemperature(config.temperature?.toString() || "0.5");
+    setHumidity(config.humidity?.toString() || "0.5");
+    setWindspeed(config.windspeed?.toString() || "0.2");
+    
+    toast({
+      title: "Preset Applied",
+      description: `Loaded settings from "${preset.name}"`,
+    });
+  };
+
+  const savePreset = async () => {
+    if (!presetName.trim()) {
+      toast({
+        title: "Name Required",
+        description: "Please enter a name for your preset",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const config = {
+      hour: parseInt(hour),
+      year: parseInt(year),
+      month: parseInt(month),
+      dayOfWeek: parseInt(dayOfWeek),
+      isHoliday,
+      isWorkingDay,
+      season: parseInt(season),
+      weather: parseInt(weather),
+      temperature: parseFloat(temperature),
+      humidity: parseFloat(humidity),
+      windspeed: parseFloat(windspeed),
+    };
+
+    const { error } = await supabase.from("prediction_presets").insert({
+      user_id: userId,
+      name: presetName,
+      preset_data: config,
+    });
+
+    if (error) {
+      toast({
+        title: "Save Failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    } else {
+      toast({
+        title: "Preset Saved",
+        description: `"${presetName}" saved successfully`,
+      });
+      setPresetName("");
+      setShowSaveDialog(false);
+      loadPresets();
+    }
+  };
 
   const handlePredict = async () => {
     setLoading(true);
@@ -84,11 +171,67 @@ const PredictionForm = ({ userId }: PredictionFormProps) => {
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
+      {/* Presets Section */}
+      {presets.length > 0 && (
+        <Card className="border-primary/20 bg-card/50 backdrop-blur urban-shadow glow-hover">
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center">
+              <BookmarkPlus className="w-5 h-5 mr-2 text-accent" />
+              Saved Presets
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-wrap gap-2">
+              {presets.map((preset) => (
+                <Button
+                  key={preset.id}
+                  variant="outline"
+                  size="sm"
+                  onClick={() => applyPreset(preset)}
+                  className="border-primary/30 hover:bg-primary/10 glow-hover"
+                >
+                  {preset.name}
+                </Button>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       <Card className="border-primary/20 bg-card/50 backdrop-blur urban-shadow">
         <CardHeader>
-          <CardTitle className="text-2xl flex items-center">
-            <Bike className="w-6 h-6 mr-2 text-primary" />
-            Bike Demand Prediction
+          <CardTitle className="text-2xl flex items-center justify-between">
+            <div className="flex items-center">
+              <Bike className="w-6 h-6 mr-2 text-primary" />
+              Bike Demand Prediction
+            </div>
+            <Dialog open={showSaveDialog} onOpenChange={setShowSaveDialog}>
+              <DialogTrigger asChild>
+                <Button variant="outline" size="sm" className="border-accent/30 hover:bg-accent/10">
+                  <Save className="w-4 h-4 mr-2" />
+                  Save Preset
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="bg-background border-primary/20">
+                <DialogHeader>
+                  <DialogTitle>Save Current Settings</DialogTitle>
+                  <DialogDescription>
+                    Give your preset a name to save these settings for later use
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4 pt-4">
+                  <Input
+                    placeholder="e.g., Morning Commute"
+                    value={presetName}
+                    onChange={(e) => setPresetName(e.target.value)}
+                    className="bg-secondary/50 border-primary/30"
+                  />
+                  <Button onClick={savePreset} className="w-full bike-gradient">
+                    Save Preset
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
           </CardTitle>
           <CardDescription>Predict bike rental demand using our ML models</CardDescription>
         </CardHeader>
