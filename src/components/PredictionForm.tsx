@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
-import { Bike, Calendar, Clock, CloudRain, Thermometer, Wind, Save, BookmarkPlus } from "lucide-react";
+import { Bike, Calendar, Clock, CloudRain, Thermometer, Wind, Save, BookmarkPlus, Download, Upload } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 
@@ -38,6 +38,27 @@ const PredictionForm = ({ userId }: PredictionFormProps) => {
   const [presets, setPresets] = useState<any[]>([]);
   const [presetName, setPresetName] = useState("");
   const [showSaveDialog, setShowSaveDialog] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Default presets
+  const defaultPresets = [
+    {
+      name: "☀️ Morning Commute",
+      config: { hour: 8, dayOfWeek: 1, season: 2, weather: 1, temperature: 0.6, humidity: 0.5, windspeed: 0.2, isHoliday: false, isWorkingDay: true }
+    },
+    {
+      name: "🌙 Evening Rush",
+      config: { hour: 18, dayOfWeek: 3, season: 2, weather: 1, temperature: 0.7, humidity: 0.6, windspeed: 0.1, isHoliday: false, isWorkingDay: true }
+    },
+    {
+      name: "🎉 Weekend Leisure",
+      config: { hour: 14, dayOfWeek: 6, season: 2, weather: 1, temperature: 0.8, humidity: 0.4, windspeed: 0.15, isHoliday: false, isWorkingDay: false }
+    },
+    {
+      name: "🌧️ Rainy Day",
+      config: { hour: 12, dayOfWeek: 2, season: 3, weather: 3, temperature: 0.4, humidity: 0.8, windspeed: 0.4, isHoliday: false, isWorkingDay: true }
+    },
+  ];
 
   useEffect(() => {
     loadPresets();
@@ -120,6 +141,87 @@ const PredictionForm = ({ userId }: PredictionFormProps) => {
     }
   };
 
+  const exportData = async () => {
+    try {
+      // Get all user presets
+      const { data: presetsData } = await supabase
+        .from("prediction_presets")
+        .select("*")
+        .eq("user_id", userId);
+
+      // Get all user predictions
+      const { data: predictionsData } = await supabase
+        .from("predictions")
+        .select("*")
+        .eq("user_id", userId)
+        .order("created_at", { ascending: false });
+
+      const exportData = {
+        presets: presetsData || [],
+        predictions: predictionsData || [],
+        exportDate: new Date().toISOString(),
+      };
+
+      const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `ridewise-export-${Date.now()}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      toast({
+        title: "Data Exported",
+        description: "Your presets and predictions have been downloaded",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Export Failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const importData = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const text = await file.text();
+      const data = JSON.parse(text);
+
+      if (data.presets && Array.isArray(data.presets)) {
+        // Import presets
+        for (const preset of data.presets) {
+          await supabase.from("prediction_presets").insert({
+            user_id: userId,
+            name: `${preset.name} (imported)`,
+            preset_data: preset.preset_data || preset.config,
+          });
+        }
+
+        toast({
+          title: "Import Successful",
+          description: `Imported ${data.presets.length} presets`,
+        });
+        loadPresets();
+      }
+    } catch (error: any) {
+      toast({
+        title: "Import Failed",
+        description: "Invalid file format or corrupted data",
+        variant: "destructive",
+      });
+    }
+
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
   const handlePredict = async () => {
     setLoading(true);
     try {
@@ -171,32 +273,83 @@ const PredictionForm = ({ userId }: PredictionFormProps) => {
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
-      {/* Presets Section */}
-      {presets.length > 0 && (
-        <Card className="border-primary/20 bg-card/50 backdrop-blur urban-shadow glow-hover">
-          <CardHeader>
-            <CardTitle className="text-lg flex items-center">
+      {/* Default & Saved Presets Section */}
+      <Card className="border-primary/20 bg-card/50 backdrop-blur urban-shadow glow-hover">
+        <CardHeader>
+          <CardTitle className="text-lg flex items-center justify-between">
+            <div className="flex items-center">
               <BookmarkPlus className="w-5 h-5 mr-2 text-accent" />
-              Saved Presets
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
+              Quick Presets
+            </div>
+            <div className="flex gap-2">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".json"
+                onChange={importData}
+                className="hidden"
+              />
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => fileInputRef.current?.click()}
+                className="border-accent/30 hover:bg-accent/10"
+              >
+                <Upload className="w-4 h-4 mr-2" />
+                Import
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={exportData}
+                className="border-accent/30 hover:bg-accent/10"
+              >
+                <Download className="w-4 h-4 mr-2" />
+                Export
+              </Button>
+            </div>
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Default Presets */}
+          <div>
+            <p className="text-sm text-muted-foreground mb-2">Default Scenarios</p>
             <div className="flex flex-wrap gap-2">
-              {presets.map((preset) => (
+              {defaultPresets.map((preset, idx) => (
                 <Button
-                  key={preset.id}
+                  key={idx}
                   variant="outline"
                   size="sm"
                   onClick={() => applyPreset(preset)}
-                  className="border-primary/30 hover:bg-primary/10 glow-hover"
+                  className="border-accent/30 hover:bg-accent/10 glow-hover"
                 >
                   {preset.name}
                 </Button>
               ))}
             </div>
-          </CardContent>
-        </Card>
-      )}
+          </div>
+
+          {/* User Saved Presets */}
+          {presets.length > 0 && (
+            <div>
+              <p className="text-sm text-muted-foreground mb-2">Your Saved Presets</p>
+              <div className="flex flex-wrap gap-2">
+                {presets.map((preset) => (
+                  <Button
+                    key={preset.id}
+                    variant="outline"
+                    size="sm"
+                    onClick={() => applyPreset(preset)}
+                    className="border-primary/30 hover:bg-primary/10 glow-hover"
+                  >
+                    {preset.name}
+                  </Button>
+                ))}
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       <Card className="border-primary/20 bg-card/50 backdrop-blur urban-shadow">
         <CardHeader>

@@ -17,6 +17,11 @@ interface ProfileSectionProps {
 interface Profile {
   username: string | null;
   email: string | null;
+  phone: string | null;
+  country: string | null;
+  address: string | null;
+  city: string | null;
+  postal_code: string | null;
   created_at: string | null;
 }
 
@@ -31,6 +36,11 @@ interface Prediction {
 const ProfileSection = ({ userId, userEmail, onLogout }: ProfileSectionProps) => {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [username, setUsername] = useState("");
+  const [phone, setPhone] = useState("");
+  const [country, setCountry] = useState("");
+  const [address, setAddress] = useState("");
+  const [city, setCity] = useState("");
+  const [postalCode, setPostalCode] = useState("");
   const [recentPredictions, setRecentPredictions] = useState<Prediction[]>([]);
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
@@ -53,6 +63,11 @@ const ProfileSection = ({ userId, userEmail, onLogout }: ProfileSectionProps) =>
       if (data) {
         setProfile(data);
         setUsername(data.username || "");
+        setPhone(data.phone || "");
+        setCountry(data.country || "");
+        setAddress(data.address || "");
+        setCity(data.city || "");
+        setPostalCode(data.postal_code || "");
       }
     } catch (error: any) {
       console.error("Error loading profile:", error);
@@ -84,6 +99,11 @@ const ProfileSection = ({ userId, userEmail, onLogout }: ProfileSectionProps) =>
           id: userId,
           username,
           email: userEmail,
+          phone,
+          country,
+          address,
+          city,
+          postal_code: postalCode,
           updated_at: new Date().toISOString(),
         });
 
@@ -138,6 +158,62 @@ const ProfileSection = ({ userId, userEmail, onLogout }: ProfileSectionProps) =>
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 placeholder="Enter username"
+                className="bg-secondary/50 border-primary/30"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="phone">Phone</Label>
+              <Input
+                id="phone"
+                type="tel"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                placeholder="+1 234 567 8900"
+                className="bg-secondary/50 border-primary/30"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="city">City</Label>
+              <Input
+                id="city"
+                value={city}
+                onChange={(e) => setCity(e.target.value)}
+                placeholder="Enter city"
+                className="bg-secondary/50 border-primary/30"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="country">Country</Label>
+              <Input
+                id="country"
+                value={country}
+                onChange={(e) => setCountry(e.target.value)}
+                placeholder="Enter country"
+                className="bg-secondary/50 border-primary/30"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="postalCode">Postal Code</Label>
+              <Input
+                id="postalCode"
+                value={postalCode}
+                onChange={(e) => setPostalCode(e.target.value)}
+                placeholder="Enter postal code"
+                className="bg-secondary/50 border-primary/30"
+              />
+            </div>
+
+            <div className="space-y-2 md:col-span-2">
+              <Label htmlFor="address">Address</Label>
+              <Input
+                id="address"
+                value={address}
+                onChange={(e) => setAddress(e.target.value)}
+                placeholder="Enter address"
                 className="bg-secondary/50 border-primary/30"
               />
             </div>

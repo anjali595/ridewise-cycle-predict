@@ -100,23 +100,38 @@ export type Database = {
       }
       profiles: {
         Row: {
+          address: string | null
+          city: string | null
+          country: string | null
           created_at: string | null
           email: string | null
           id: string
+          phone: string | null
+          postal_code: string | null
           updated_at: string | null
           username: string | null
         }
         Insert: {
+          address?: string | null
+          city?: string | null
+          country?: string | null
           created_at?: string | null
           email?: string | null
           id: string
+          phone?: string | null
+          postal_code?: string | null
           updated_at?: string | null
           username?: string | null
         }
         Update: {
+          address?: string | null
+          city?: string | null
+          country?: string | null
           created_at?: string | null
           email?: string | null
           id?: string
+          phone?: string | null
+          postal_code?: string | null
           updated_at?: string | null
           username?: string | null
         }
