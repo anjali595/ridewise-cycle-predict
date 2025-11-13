@@ -75,7 +75,8 @@ const PredictionForm = ({ userId }: PredictionFormProps) => {
   };
 
   const applyPreset = (preset: any) => {
-    const config = preset.preset_data;
+    // Handle both default presets (with config) and user presets (with preset_data)
+    const config = preset.preset_data || preset.config;
     setHour(config.hour?.toString() || "12");
     setYear(config.year?.toString() || "2024");
     setMonth(config.month?.toString() || "1");

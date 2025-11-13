@@ -5,7 +5,16 @@ import { Bike, Brain, MessageSquare, BarChart3, Sparkles, TrendingUp, Cloud, Cal
 
 const Index = () => {
   return (
-    <div className="min-h-screen bg-gradient-to-b from-background via-background to-secondary/20">
+    <div className="min-h-screen animated-bg relative overflow-hidden">
+      {/* Floating decorative shapes */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-20 left-10 w-32 h-32 rounded-full bg-primary/10 blur-3xl floating-shape" />
+        <div className="absolute top-40 right-20 w-40 h-40 rounded-full bg-accent/10 blur-3xl floating-shape-slow" />
+        <div className="absolute bottom-32 left-1/4 w-36 h-36 rounded-full bg-primary/15 blur-3xl floating-shape" />
+        <div className="absolute bottom-20 right-1/3 w-48 h-48 rounded-full bg-accent/10 blur-3xl floating-shape-slow" />
+      </div>
+      
+      <div className="relative z-10">
       {/* Hero Section */}
       <div className="container mx-auto px-4 py-16 md:py-24">
         <div className="text-center space-y-8 max-w-4xl mx-auto">
@@ -183,6 +192,7 @@ const Index = () => {
             © 2024 RideWise. Powered by Machine Learning & Urban Innovation.
           </p>
         </div>
+      </div>
       </div>
     </div>
   );

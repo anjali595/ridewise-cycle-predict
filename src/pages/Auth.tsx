@@ -96,10 +96,14 @@ const Auth = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background relative overflow-hidden p-4">
-      {/* Animated background */}
-      <div className="absolute inset-0 bg-gradient-to-br from-background via-purple-950/20 to-background" />
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,hsl(270_70%_60%_/_0.1),transparent_50%)]" />
+    <div className="min-h-screen flex items-center justify-center animated-bg relative overflow-hidden p-4">
+      {/* Floating decorative shapes */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-10 left-20 w-40 h-40 rounded-full bg-primary/10 blur-3xl floating-shape" />
+        <div className="absolute top-1/3 right-10 w-48 h-48 rounded-full bg-accent/10 blur-3xl floating-shape-slow" />
+        <div className="absolute bottom-20 left-1/3 w-36 h-36 rounded-full bg-primary/15 blur-3xl floating-shape" />
+        <div className="absolute bottom-10 right-1/4 w-44 h-44 rounded-full bg-accent/10 blur-3xl floating-shape-slow" />
+      </div>
 
       <Card className="w-full max-w-md relative z-10 urban-shadow border-primary/20">
         <CardHeader className="text-center space-y-4">
