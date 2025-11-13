@@ -48,21 +48,31 @@ const Dashboard = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <Navigation
-        activeSection={activeSection}
-        onSectionChange={setActiveSection}
-        onLogout={handleLogout}
-        userEmail={user.email || ""}
-      />
+    <div className="min-h-screen animated-bg relative overflow-hidden">
+      {/* Floating decorative shapes */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-20 left-10 w-32 h-32 rounded-full bg-primary/10 blur-3xl floating-shape" />
+        <div className="absolute top-60 right-20 w-40 h-40 rounded-full bg-accent/10 blur-3xl floating-shape-slow" />
+        <div className="absolute bottom-40 left-1/4 w-36 h-36 rounded-full bg-primary/15 blur-3xl floating-shape" />
+        <div className="absolute bottom-20 right-1/3 w-48 h-48 rounded-full bg-accent/10 blur-3xl floating-shape-slow" />
+      </div>
       
-      <main className="container mx-auto px-4 py-8">
+      <div className="relative z-10">
+        <Navigation
+          activeSection={activeSection}
+          onSectionChange={setActiveSection}
+          onLogout={handleLogout}
+          userEmail={user.email || ""}
+        />
+        
+        <main className="container mx-auto px-4 py-8">
         {activeSection === "dashboard" && <DashboardOverview userId={user.id} />}
         {activeSection === "prediction" && <PredictionForm userId={user.id} />}
         {activeSection === "chatbot" && <ChatbotSection />}
         {activeSection === "contact" && <ContactSection userId={user.id} />}
         {activeSection === "profile" && <ProfileSection userId={user.id} userEmail={user.email || ""} onLogout={handleLogout} />}
-      </main>
+        </main>
+      </div>
     </div>
   );
 };
