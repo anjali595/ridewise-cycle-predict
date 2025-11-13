@@ -391,9 +391,9 @@ const PredictionForm = ({ userId }: PredictionFormProps) => {
         </CardHeader>
         <CardContent>
           <Tabs value={predictionType} onValueChange={(v) => setPredictionType(v as "hourly" | "daily")}>
-            <TabsList className="grid w-full grid-cols-2 mb-6">
-              <TabsTrigger value="hourly">Hourly Demand</TabsTrigger>
-              <TabsTrigger value="daily">Daily Demand</TabsTrigger>
+            <TabsList className="grid w-full grid-cols-2 mb-6 bg-gradient-to-r from-primary/20 via-accent/20 to-primary/20 border border-primary/30 p-1 backdrop-blur urban-shadow">
+              <TabsTrigger value="hourly" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg data-[state=active]:shadow-primary/50">Hourly Demand</TabsTrigger>
+              <TabsTrigger value="daily" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg data-[state=active]:shadow-primary/50">Daily Demand</TabsTrigger>
             </TabsList>
 
             <TabsContent value="hourly" className="space-y-4">
