@@ -1,5 +1,8 @@
 # Welcome to your Lovable project
 
+## Live URL of project
+**URL**: https://ridewise-cycle-predict.lovable.app
+
 ## Project info
 
 **URL**: https://lovable.dev/projects/5aff9bdb-8d76-457b-b297-da412a1f5649
