@@ -1,7 +1,5 @@
 project_id = "iwfmochxptbdmwbmhaxt"
 
 [functions.predict-demand]
-verify_jwt = false
 
 [functions.chat]
-verify_jwt = false

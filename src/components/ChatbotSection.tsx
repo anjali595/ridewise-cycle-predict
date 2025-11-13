@@ -6,6 +6,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Bike, Send, Sparkles } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { z } from "zod";
+
+const chatSchema = z.object({
+  message: z.string().min(1, "Message cannot be empty").max(1000, "Message must be less than 1000 characters"),
+});
 
 interface Message {
   id: string;
@@ -37,10 +42,22 @@ const ChatbotSection = () => {
   const handleSend = async () => {
     if (!input.trim() || loading) return;
 
+    // Validate input
+    const validation = chatSchema.safeParse({ message: input });
+    
+    if (!validation.success) {
+      toast({
+        title: "Invalid Message",
+        description: validation.error.errors[0].message,
+        variant: "destructive",
+      });
+      return;
+    }
+
     const userMessage: Message = {
       id: Date.now().toString(),
       role: "user",
-      content: input,
+      content: validation.data.message.trim(),
       timestamp: new Date(),
     };
 

@@ -8,6 +8,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { Mail, Github, Linkedin, Twitter, MapPin } from "lucide-react";
+import { z } from "zod";
+
+const contactSchema = z.object({
+  name: z.string().min(1, "Name is required").max(100, "Name must be less than 100 characters"),
+  email: z.string().email("Invalid email address").max(255, "Email must be less than 255 characters"),
+  message: z.string().min(10, "Message must be at least 10 characters").max(2000, "Message must be less than 2000 characters"),
+});
 
 interface ContactSectionProps {
   userId: string;
@@ -26,12 +33,26 @@ const ContactSection = ({ userId }: ContactSectionProps) => {
     setLoading(true);
 
     try {
+      // Validate inputs
+      const validation = contactSchema.safeParse({ name, email, message });
+      
+      if (!validation.success) {
+        const firstError = validation.error.errors[0];
+        toast({
+          title: "Validation Error",
+          description: firstError.message,
+          variant: "destructive",
+        });
+        setLoading(false);
+        return;
+      }
+
       const { error } = await supabase.from("contact_messages").insert({
         user_id: userId,
-        name,
-        email,
+        name: validation.data.name.trim(),
+        email: validation.data.email.trim(),
         feedback_type: feedbackType,
-        message,
+        message: validation.data.message.trim(),
       });
 
       if (error) throw error;

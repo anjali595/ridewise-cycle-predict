@@ -10,6 +10,17 @@ import { useToast } from "@/hooks/use-toast";
 import { Bike, Calendar, Clock, CloudRain, Thermometer, Wind, Save, BookmarkPlus, Download, Upload } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { z } from "zod";
+
+const presetSchema = z.object({
+  name: z.string().min(1).max(100, "Preset name must be less than 100 characters"),
+  preset_data: z.object({}).passthrough().optional(),
+  config: z.object({}).passthrough().optional(),
+});
+
+const importSchema = z.object({
+  presets: z.array(presetSchema).max(100, "Cannot import more than 100 presets at once"),
+});
 
 interface PredictionFormProps {
   userId: string;
@@ -191,29 +202,44 @@ const PredictionForm = ({ userId }: PredictionFormProps) => {
     if (!file) return;
 
     try {
+      // Validate file size (max 1MB)
+      if (file.size > 1024 * 1024) {
+        throw new Error("File size must be less than 1MB");
+      }
+
       const text = await file.text();
       const data = JSON.parse(text);
 
-      if (data.presets && Array.isArray(data.presets)) {
-        // Import presets
-        for (const preset of data.presets) {
-          await supabase.from("prediction_presets").insert({
+      // Validate imported data structure
+      const validation = importSchema.safeParse(data);
+      
+      if (!validation.success) {
+        throw new Error("Invalid data format: " + validation.error.errors[0].message);
+      }
+
+      if (validation.data.presets && Array.isArray(validation.data.presets)) {
+        // Import presets with validation
+        for (const preset of validation.data.presets) {
+          const sanitizedName = preset.name.substring(0, 100); // Enforce length limit
+          const presetData = preset.preset_data || preset.config || {};
+          
+          await supabase.from("prediction_presets").insert([{
             user_id: userId,
-            name: `${preset.name} (imported)`,
-            preset_data: preset.preset_data || preset.config,
-          });
+            name: `${sanitizedName} (imported)`,
+            preset_data: presetData,
+          }]);
         }
 
         toast({
           title: "Import Successful",
-          description: `Imported ${data.presets.length} presets`,
+          description: `Imported ${validation.data.presets.length} presets`,
         });
         loadPresets();
       }
     } catch (error: any) {
       toast({
         title: "Import Failed",
-        description: "Invalid file format or corrupted data",
+        description: error.message || "Invalid file format or corrupted data",
         variant: "destructive",
       });
     }

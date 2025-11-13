@@ -7,6 +7,16 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { User, Mail, Calendar, History, Save } from "lucide-react";
 import { format } from "date-fns";
+import { z } from "zod";
+
+const profileSchema = z.object({
+  username: z.string().max(50, "Username must be less than 50 characters").optional(),
+  phone: z.string().max(20, "Phone must be less than 20 characters").regex(/^[+\d\s()-]*$/, "Invalid phone format").optional(),
+  address: z.string().max(200, "Address must be less than 200 characters").optional(),
+  city: z.string().max(100, "City must be less than 100 characters").optional(),
+  postalCode: z.string().max(20, "Postal code must be less than 20 characters").optional(),
+  country: z.string().max(100, "Country must be less than 100 characters").optional(),
+});
 
 interface ProfileSectionProps {
   userId: string;
@@ -93,17 +103,38 @@ const ProfileSection = ({ userId, userEmail, onLogout }: ProfileSectionProps) =>
   const saveProfile = async () => {
     setLoading(true);
     try {
+      // Validate inputs
+      const validation = profileSchema.safeParse({
+        username,
+        phone,
+        address,
+        city,
+        postalCode,
+        country,
+      });
+
+      if (!validation.success) {
+        const firstError = validation.error.errors[0];
+        toast({
+          title: "Validation Error",
+          description: firstError.message,
+          variant: "destructive",
+        });
+        setLoading(false);
+        return;
+      }
+
       const { error } = await supabase
         .from("profiles")
         .upsert({
           id: userId,
-          username,
+          username: validation.data.username?.trim() || null,
           email: userEmail,
-          phone,
-          country,
-          address,
-          city,
-          postal_code: postalCode,
+          phone: validation.data.phone?.trim() || null,
+          country: validation.data.country?.trim() || null,
+          address: validation.data.address?.trim() || null,
+          city: validation.data.city?.trim() || null,
+          postal_code: validation.data.postalCode?.trim() || null,
           updated_at: new Date().toISOString(),
         });
 
